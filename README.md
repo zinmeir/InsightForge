@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>📊 InsightForge</h1>
+  <h1>InsightForge</h1>
   <p><b>Real-Time Log Ingestion & Observability Platform</b></p>
   
   ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
@@ -10,11 +10,11 @@
 
 ---
 
-## 🚀 Overview
+##  Overview
 
 **InsightForge** is a high-performance, SRE-grade observability platform built to handle real-time log ingestion, indexing, and monitoring. Featuring a highly responsive Grafana-style dashboard and an async backend, it allows DevOps teams to monitor system health, instantly query unstructured logs, and trigger automated alerts based on custom rules.
 
-### ✨ Core Features
+###  Core Features
 * **High-Throughput Ingestion:** Leverages FastAPI's asynchronous event loop to buffer and batch log writes without blocking.
 * **Full-Text Search:** Utilizes Elasticsearch for deep, instant querying and filtering of log messages and system metrics.
 * **Grafana-Style UI:** A dark-mode React dashboard featuring live-updating Recharts and a streaming system terminal.
@@ -23,7 +23,7 @@
 
 ---
 
-## 🏗️ Architecture & Tech Stack
+##  Architecture & Tech Stack
 
 | Component | Technology | Description |
 |-----------|------------|-------------|
@@ -34,7 +34,7 @@
 
 ---
 
-## 🚦 Getting Started
+##  Getting Started
 
 Follow these steps to run the complete observability stack locally on your machine.
 
@@ -60,7 +60,7 @@ Follow these steps to run the complete observability stack locally on your machi
    * **API Swagger Docs (Backend):** Navigate to `http://localhost:8000/docs`
    * **Elasticsearch Node:** Navigate to `http://localhost:9200`
 
-### 🧪 API Ingestion Test
+###  API Ingestion Test
 You can simulate a microservice sending a log to the platform by running this `curl` command in your terminal:
 ```bash
 curl -X POST "http://localhost:8000/api/ingest" \
@@ -70,7 +70,7 @@ curl -X POST "http://localhost:8000/api/ingest" \
 
 ---
 
-## 🔮 Future Roadmap
+##  Future Roadmap
 
 The next phase of development focuses on expanding the alerting and integration capabilities:
 * **Webhook Integrations:** Expanding the alerting pipeline to push critical alerts directly to Slack and PagerDuty via webhooks.
