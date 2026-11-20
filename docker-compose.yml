@@ -1,38 +1,102 @@
-version: '3.8'
+# InsightForge - local / single-host stack.
+#
+#   docker compose up --build                     # app only
+#   docker compose --profile demo up --build      # + traffic simulator
+#
+# Every setting has a development default. For anything shared, copy .env.example to .env
+# and change the secrets (see README "Production checklist").
+
+name: insightforge
+
+x-restart: &restart
+  restart: unless-stopped
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    <<: *restart
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ES_VERSION:-8.17.0}
     container_name: insightforge-es
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false        # TLS terminates elsewhere / private network
+      - xpack.security.transport.ssl.enabled=false   # single node: no transport traffic
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-insightforge-dev}
+      - ES_JAVA_OPTS=-Xms${ES_HEAP:-1g} -Xmx${ES_HEAP:-1g}
+      - bootstrap.memory_lock=true
+      - cluster.routing.allocation.disk.watermark.low=${ES_DISK_WATERMARK_LOW:-90%}
+      - cluster.routing.allocation.disk.watermark.high=${ES_DISK_WATERMARK_HIGH:-95%}
+      - cluster.routing.allocation.disk.watermark.flood_stage=${ES_DISK_WATERMARK_FLOOD:-97%}
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"   # reachable from this machine only
     volumes:
       - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u elastic:$${ELASTIC_PASSWORD} 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' >/dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
 
   backend:
+    <<: *restart
     build: ./backend
+    image: insightforge-backend:${IMAGE_TAG:-local}
     container_name: insightforge-backend
-    ports:
-      - "8000:8000"
     environment:
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD:-insightforge-dev}
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-14}
+      AUTH_ENABLED: ${AUTH_ENABLED:-true}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-dev-only-change-me}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      VIEWER_USERNAME: ${VIEWER_USERNAME:-}
+      VIEWER_PASSWORD: ${VIEWER_PASSWORD:-}
+      INGEST_API_KEYS: ${INGEST_API_KEYS:-dev-ingest-key}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      PAGERDUTY_ROUTING_KEY: ${PAGERDUTY_ROUTING_KEY:-}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      ALERT_WEBHOOK_SECRET: ${ALERT_WEBHOOK_SECRET:-}
+      PUBLIC_DASHBOARD_URL: ${PUBLIC_DASHBOARD_URL:-http://localhost:3000}
+    ports:
+      - "8000:8000"   # direct ingestion + Swagger UI at /docs
     depends_on:
-      - elasticsearch
-    restart: always
+      elasticsearch:
+        condition: service_healthy
 
   frontend:
+    <<: *restart
     build: ./frontend
+    image: insightforge-frontend:${IMAGE_TAG:-local}
     container_name: insightforge-frontend
     ports:
-      - "3000:3000"
-    environment:
-      - VITE_API_URL=http://localhost:8000
+      - "3000:8080"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+
+  loadgen:
+    profiles: ["demo"]
+    image: insightforge-backend:${IMAGE_TAG:-local}
+    build: ./backend
+    container_name: insightforge-loadgen
+    command: ["python", "scripts/loadgen.py"]
+    environment:
+      LOADGEN_TARGET_URL: http://backend:8000
+      LOADGEN_API_KEY: ${LOADGEN_API_KEY:-dev-ingest-key}
+      LOADGEN_RATE: ${LOADGEN_RATE:-25}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   esdata:

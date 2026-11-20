@@ -1,0 +1,32 @@
+[project]
+name = "insightforge-backend"
+version = "2.0.0"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "S", "SIM", "RUF"]
+ignore = [
+    "B008",    # FastAPI's Depends()/Query() in defaults is idiomatic
+    "S101",    # asserts are used for invariants
+    "RUF012",
+    "S105",    # flags field names like token_type / *_SECRET constants; real secrets come from env
+    "UP017",   # timezone.utc is fine
+    "ASYNC109", # explicit timeout params on shutdown helpers are intentional
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B"]
+"scripts/**" = ["S311", "S110", "SIM105"]  # random is fine for fake traffic
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = false  # metrics.py fallback needs ignores only when prometheus_client is installed
