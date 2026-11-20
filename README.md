@@ -355,6 +355,7 @@ import hmac, hashlib
 expected = "sha256=" + hmac.new(SECRET.encode(), request_body, hashlib.sha256).hexdigest()
 assert hmac.compare_digest(expected, request.headers["X-InsightForge-Signature"])
 ```
+```
 
 ---
 
